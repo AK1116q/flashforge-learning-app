@@ -1,0 +1,18 @@
+{
+  "name": "flashforge-learning-app",
+  "version": "1.0.0",
+  "description": "Assignment 2 SPA flashcard learning app with CRUD, authentication, live search, and admin history.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "spa",
+    "react",
+    "crud",
+    "flashcards"
+  ],
+  "author": "",
+  "license": "MIT"
+}

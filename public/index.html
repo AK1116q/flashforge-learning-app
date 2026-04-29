@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FlashForge Learning App</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="text/babel">
+      const { useEffect, useMemo, useState } = React;
+
+      const emptyDeck = { title: "", subject: "", description: "" };
+      const emptyCard = { deckId: "", front: "", back: "", difficulty: "medium" };
+
+      function App() {
+        const [token, setToken] = useState(localStorage.getItem("token") || "");
+        const [user, setUser] = useState(null);
+        const [view, setView] = useState("dashboard");
+        const [data, setData] = useState({ users: [], decks: [], cards: [], history: [] });
+        const [message, setMessage] = useState("");
+        const [error, setError] = useState("");
+
+        async function api(path, options = {}) {
+          const response = await fetch(path, {
+            ...options,
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              ...(options.headers || {})
+            }
+          });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.error || "Request failed");
+          return payload;
+        }
+
+        async function refresh() {
+          if (!token) return;
+          const payload = await api("/api/summary");
+          setData(payload);
+        }
+
+        useEffect(() => {
+          if (!token) return;
+          api("/api/me")
+            .then(payload => {
+              setUser(payload.user);
+              return refresh();
+            })
+            .catch(() => logout());
+        }, [token]);
+
+        function notify(text) {
+          setError("");
+          setMessage(text);
+          window.setTimeout(() => setMessage(""), 2600);
+        }
+
+        function fail(error) {
+          setMessage("");
+          setError(error.message);
+        }
+
+        function logout() {
+          localStorage.removeItem("token");
+          setToken("");
+          setUser(null);
+          setData({ users: [], decks: [], cards: [], history: [] });
+          setView("dashboard");
+        }
+
+        async function handleAuth(mode, form) {
+          try {
+            const payload = await api(`/api/${mode}`, { method: "POST", body: JSON.stringify(form) });
+            localStorage.setItem("token", payload.token);
+            setToken(payload.token);
+            setUser(payload.user);
+            setView("dashboard");
+            notify("Welcome to FlashForge");
+          } catch (error) {
+            fail(error);
+          }
+        }
+
+        const stats = {
+          decks: data.decks.length,
+          cards: data.cards.length,
+          attempts: data.history.length
+        };
+
+        return (
+          <div className="app">
+            <header className="topbar">
+              <div className="brand"><span className="brand-mark">F</span> FlashForge</div>
+              {user && (
+                <nav className="nav">
+                  {["dashboard", "decks", "study"].map(item => (
+                    <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>{item}</button>
+                  ))}
+                  {user.role === "admin" && <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>admin</button>}
+                  <button onClick={logout}>logout</button>
+                </nav>
+              )}
+            </header>
+
+            <main className="shell">
+              {message && <p className="notice">{message}</p>}
+              {error && <p className="notice error">{error}</p>}
+              {!user ? (
+                <Landing onAuth={handleAuth} />
+              ) : (
+                <>
+                  {view === "dashboard" && <Dashboard user={user} data={data} stats={stats} />}
+                  {view === "decks" && <DeckManager data={data} api={api} refresh={refresh} notify={notify} fail={fail} />}
+                  {view === "study" && <Study data={data} api={api} refresh={refresh} notify={notify} fail={fail} />}
+                  {view === "admin" && <Admin data={data} api={api} refresh={refresh} notify={notify} fail={fail} />}
+                </>
+              )}
+            </main>
+          </div>
+        );
+      }
+
+      function Landing({ onAuth }) {
+        const [mode, setMode] = useState("login");
+        const [form, setForm] = useState({ name: "", email: "maya@student.test", password: "student123" });
+        function update(field, value) {
+          setForm(current => ({ ...current, [field]: value }));
+        }
+        return (
+          <section className="hero">
+            <div className="hero-main">
+              <p className="eyebrow">Modern front-end libraries assignment</p>
+              <h1>Flashcard study, CRUD workflows, and learning history in one SPA.</h1>
+              <p className="muted">Create decks, manage flashcards, search instantly, complete study sessions, and review activity from an admin account.</p>
+              <div className="stats">
+                <div className="stat"><strong>3</strong><span>CRUD entities</span></div>
+                <div className="stat"><strong>1</strong><span>HTML entry page</span></div>
+                <div className="stat"><strong>JWT</strong><span>Token login</span></div>
+              </div>
+            </div>
+            <form className="auth-box form-grid" onSubmit={event => { event.preventDefault(); onAuth(mode, form); }}>
+              <h2>{mode === "login" ? "Login" : "Register"}</h2>
+              {mode === "register" && <label>Name<input value={form.name} onChange={event => update("name", event.target.value)} /></label>}
+              <label>Email<input type="email" value={form.email} onChange={event => update("email", event.target.value)} /></label>
+              <label>Password<input type="password" value={form.password} onChange={event => update("password", event.target.value)} /></label>
+              <button className="primary">{mode === "login" ? "Login" : "Create account"}</button>
+              <button className="ghost" type="button" onClick={() => setMode(mode === "login" ? "register" : "login")}>
+                {mode === "login" ? "Need an account?" : "Already registered?"}
+              </button>
+              <p className="muted">Admin: admin@flashforge.test / admin123</p>
+            </form>
+          </section>
+        );
+      }
+
+      function Dashboard({ user, data, stats }) {
+        const latest = data.history.slice(-4).reverse();
+        const reviewItems = data.history
+          .filter(item => item.type === "review")
+          .slice(-5)
+          .reverse();
+        return (
+          <>
+            <section className="hero">
+              <div className="hero-main">
+                <p className="eyebrow">Welcome, {user.name}</p>
+                <h1>Build sharper study sets and track every practice session.</h1>
+                <p className="muted">This dashboard reads live data from the backend and updates as decks, cards, and study records change.</p>
+              </div>
+              <div className="panel">
+                <h2>Progress</h2>
+                <div className="stats">
+                  <div className="stat"><strong>{stats.decks}</strong><span>Decks</span></div>
+                  <div className="stat"><strong>{stats.cards}</strong><span>Cards</span></div>
+                  <div className="stat"><strong>{stats.attempts}</strong><span>Sessions</span></div>
+                </div>
+              </div>
+            </section>
+            <section className="panel">
+              <h2>Recent learning history</h2>
+              <HistoryTable history={latest} data={data} />
+            </section>
+            <section className="panel" style={{ marginTop: 18 }}>
+              <h2>Cards to review</h2>
+              <ReviewList items={reviewItems} data={data} />
+            </section>
+          </>
+        );
+      }
+
+      function DeckManager({ data, api, refresh, notify, fail }) {
+        const [query, setQuery] = useState("");
+        const [deckForm, setDeckForm] = useState(emptyDeck);
+        const [cardForm, setCardForm] = useState(emptyCard);
+        const [editingDeck, setEditingDeck] = useState(null);
+        const [editingCard, setEditingCard] = useState(null);
+
+        const decks = data.decks.filter(deck => `${deck.title} ${deck.subject} ${deck.description}`.toLowerCase().includes(query.toLowerCase()));
+        const cards = data.cards.filter(card => `${card.front} ${card.back} ${card.difficulty}`.toLowerCase().includes(query.toLowerCase()));
+
+        async function saveDeck(event) {
+          event.preventDefault();
+          try {
+            if (editingDeck) {
+              await api(`/api/decks/${editingDeck}`, { method: "PUT", body: JSON.stringify(deckForm) });
+              notify("Deck updated");
+            } else {
+              await api("/api/decks", { method: "POST", body: JSON.stringify(deckForm) });
+              notify("Deck created");
+            }
+            setDeckForm(emptyDeck);
+            setEditingDeck(null);
+            refresh();
+          } catch (error) {
+            fail(error);
+          }
+        }
+
+        async function saveCard(event) {
+          event.preventDefault();
+          try {
+            if (editingCard) {
+              await api(`/api/cards/${editingCard}`, { method: "PUT", body: JSON.stringify(cardForm) });
+              notify("Card updated");
+            } else {
+              await api("/api/cards", { method: "POST", body: JSON.stringify(cardForm) });
+              notify("Card created");
+            }
+            setCardForm(emptyCard);
+            setEditingCard(null);
+            refresh();
+          } catch (error) {
+            fail(error);
+          }
+        }
+
+        async function remove(path, text) {
+          try {
+            await api(path, { method: "DELETE" });
+            notify(text);
+            refresh();
+          } catch (error) {
+            fail(error);
+          }
+        }
+
+        function editDeck(deck) {
+          setEditingDeck(deck.id);
+          setDeckForm({ title: deck.title, subject: deck.subject, description: deck.description });
+        }
+
+        function editCard(card) {
+          setEditingCard(card.id);
+          setCardForm({ deckId: card.deckId, front: card.front, back: card.back, difficulty: card.difficulty });
+        }
+
+        return (
+          <section className="workspace">
+            <aside className="panel">
+              <h2>{editingDeck ? "Update deck" : "Create deck"}</h2>
+              <form className="form-grid" onSubmit={saveDeck}>
+                <label>Title<input value={deckForm.title} onChange={event => setDeckForm({ ...deckForm, title: event.target.value })} required /></label>
+                <label>Subject<input value={deckForm.subject} onChange={event => setDeckForm({ ...deckForm, subject: event.target.value })} required /></label>
+                <label>Description<textarea value={deckForm.description} onChange={event => setDeckForm({ ...deckForm, description: event.target.value })} /></label>
+                <button className="primary">{editingDeck ? "Save deck" : "Add deck"}</button>
+              </form>
+              <hr />
+              <h2>{editingCard ? "Update card" : "Create card"}</h2>
+              <form className="form-grid" onSubmit={saveCard}>
+                <label>Deck<select value={cardForm.deckId} onChange={event => setCardForm({ ...cardForm, deckId: event.target.value })} required>
+                  <option value="">Choose a deck</option>
+                  {data.decks.map(deck => <option key={deck.id} value={deck.id}>{deck.title}</option>)}
+                </select></label>
+                <label>Front<textarea value={cardForm.front} onChange={event => setCardForm({ ...cardForm, front: event.target.value })} required /></label>
+                <label>Back<textarea value={cardForm.back} onChange={event => setCardForm({ ...cardForm, back: event.target.value })} required /></label>
+                <label>Difficulty<select value={cardForm.difficulty} onChange={event => setCardForm({ ...cardForm, difficulty: event.target.value })}>
+                  <option value="easy">easy</option><option value="medium">medium</option><option value="hard">hard</option>
+                </select></label>
+                <button className="primary">{editingCard ? "Save card" : "Add card"}</button>
+              </form>
+            </aside>
+            <div>
+              <div className="toolbar">
+                <h2>Decks and cards</h2>
+                <label>Live search<input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search title, subject, question, answer..." /></label>
+              </div>
+              <div className="grid">
+                {decks.map(deck => <article className="card" key={deck.id}>
+                  <div className="card-meta"><span>{deck.subject}</span><span>{data.cards.filter(card => card.deckId === deck.id).length} cards</span></div>
+                  <h3>{deck.title}</h3>
+                  <p className="muted">{deck.description}</p>
+                  <div className="actions">
+                    <button className="ghost" onClick={() => editDeck(deck)}>Edit</button>
+                    <button className="danger" onClick={() => remove(`/api/decks/${deck.id}`, "Deck deleted")}>Delete</button>
+                  </div>
+                </article>)}
+              </div>
+              <h2 style={{ marginTop: 24 }}>Flashcards</h2>
+              <div className="grid">
+                {cards.map(card => <article className="card" key={card.id}>
+                  <span className={`badge ${card.difficulty}`}>{card.difficulty}</span>
+                  <h3>{card.front}</h3>
+                  <p className="muted">{card.back}</p>
+                  <div className="actions">
+                    <button className="ghost" onClick={() => editCard(card)}>Edit</button>
+                    <button className="danger" onClick={() => remove(`/api/cards/${card.id}`, "Card deleted")}>Delete</button>
+                  </div>
+                </article>)}
+              </div>
+            </div>
+          </section>
+        );
+      }
+
+      function Study({ data, api, refresh, notify, fail }) {
+        const [deckId, setDeckId] = useState(data.decks[0]?.id || "");
+        const [index, setIndex] = useState(0);
+        const [showBack, setShowBack] = useState(false);
+        const [score, setScore] = useState(0);
+        const deckCards = data.cards.filter(card => card.deckId === deckId);
+        const current = deckCards[index];
+        const reviewCount = data.history.filter(item => item.type === "review" && item.deckId === deckId).length;
+
+        useEffect(() => {
+          if (!deckId && data.decks[0]) setDeckId(data.decks[0].id);
+        }, [data.decks.length]);
+
+        async function mark(correct) {
+          const reviewedCard = current;
+          if (correct) {
+            setScore(value => value + 1);
+          } else if (reviewedCard) {
+            try {
+              await api("/api/history", {
+                method: "POST",
+                body: JSON.stringify({
+                  deckId,
+                  cardId: reviewedCard.id,
+                  type: "review",
+                  score: 0,
+                  total: 1,
+                  notes: `Needs review: ${reviewedCard.front}`
+                })
+              });
+              notify("Review reminder saved");
+              refresh();
+            } catch (error) {
+              fail(error);
+              return;
+            }
+          }
+          setShowBack(false);
+          setIndex(value => Math.min(value + 1, deckCards.length));
+        }
+
+        async function finish() {
+          try {
+            await api("/api/history", { method: "POST", body: JSON.stringify({ deckId, score, total: deckCards.length, notes: "Completed in study mode" }) });
+            notify("Study session saved");
+            setIndex(0);
+            setScore(0);
+            refresh();
+          } catch (error) {
+            fail(error);
+          }
+        }
+
+        return (
+          <section className="panel">
+            <div className="toolbar">
+              <h2>Study mode</h2>
+              <label>Deck<select value={deckId} onChange={event => { setDeckId(event.target.value); setIndex(0); setScore(0); }}>
+                {data.decks.map(deck => <option key={deck.id} value={deck.id}>{deck.title}</option>)}
+              </select></label>
+            </div>
+            {reviewCount > 0 && <p className="notice">{reviewCount} card{reviewCount === 1 ? "" : "s"} in this deck need review.</p>}
+            {!current ? (
+              <div className="card">
+                <h3>Session complete</h3>
+                <p className="muted">Score: {score} / {deckCards.length}</p>
+                <div className="actions">
+                  <button className="primary" onClick={finish} disabled={!deckCards.length}>Save result</button>
+                  <button className="ghost" onClick={() => { setIndex(0); setScore(0); }}>Restart</button>
+                </div>
+              </div>
+            ) : (
+              <div className="card">
+                <p className="muted">Card {index + 1} of {deckCards.length}</p>
+                <button className="flip-card" onClick={() => setShowBack(!showBack)}>
+                  {showBack ? current.back : current.front}
+                </button>
+                <div className="actions">
+                  {!showBack ? (
+                    <button className="primary" onClick={() => setShowBack(true)}>Show answer</button>
+                  ) : (
+                    <>
+                      <button className="danger" onClick={() => mark(false)}>Need review</button>
+                      <button className="primary" onClick={() => mark(true)}>I knew it</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        );
+      }
+
+      function Admin({ data, api, refresh, notify, fail }) {
+        async function removeHistory(id) {
+          try {
+            await api(`/api/history/${id}`, { method: "DELETE" });
+            notify("History record deleted");
+            refresh();
+          } catch (error) {
+            fail(error);
+          }
+        }
+        return (
+          <section className="panel">
+            <h2>Admin overview</h2>
+            <div className="stats">
+              <div className="stat"><strong>{data.users.length}</strong><span>Users</span></div>
+              <div className="stat"><strong>{data.decks.length}</strong><span>Decks</span></div>
+              <div className="stat"><strong>{data.cards.length}</strong><span>Cards</span></div>
+            </div>
+            <h2 style={{ marginTop: 24 }}>Users</h2>
+            <table className="table"><thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead><tbody>
+              {data.users.map(user => <tr key={user.id}><td>{user.name}</td><td>{user.email}</td><td>{user.role}</td></tr>)}
+            </tbody></table>
+            <h2 style={{ marginTop: 24 }}>Learning history</h2>
+            <HistoryTable history={data.history} data={data} onDelete={removeHistory} />
+          </section>
+        );
+      }
+
+      function HistoryTable({ history, data, onDelete }) {
+        if (!history.length) return <p className="muted">No learning history yet.</p>;
+        return (
+          <table className="table">
+            <thead><tr><th>User</th><th>Deck</th><th>Type</th><th>Score</th><th>Date</th><th></th></tr></thead>
+            <tbody>
+              {history.map(item => {
+                const user = data.users.find(entry => entry.id === item.userId);
+                const deck = data.decks.find(entry => entry.id === item.deckId);
+                return <tr key={item.id}>
+                  <td>{user?.name || item.userId}</td>
+                  <td>{deck?.title || item.deckId}</td>
+                  <td>{item.type || "session"}</td>
+                  <td>{item.score} / {item.total}</td>
+                  <td>{new Date(item.createdAt).toLocaleString()}</td>
+                  <td>{onDelete && <button className="danger" onClick={() => onDelete(item.id)}>Delete</button>}</td>
+                </tr>;
+              })}
+            </tbody>
+          </table>
+        );
+      }
+
+      function ReviewList({ items, data }) {
+        if (!items.length) return <p className="muted">No cards are marked for review yet.</p>;
+        return (
+          <div className="grid">
+            {items.map(item => {
+              const card = data.cards.find(entry => entry.id === item.cardId);
+              const deck = data.decks.find(entry => entry.id === item.deckId);
+              return (
+                <article className="card" key={item.id}>
+                  <div className="card-meta"><span>{deck?.title || "Deck"}</span><span>{new Date(item.createdAt).toLocaleDateString()}</span></div>
+                  <h3>{card?.front || item.notes}</h3>
+                  <p className="muted">{card?.back || "Review this item again in study mode."}</p>
+                  <span className="badge hard">needs review</span>
+                </article>
+              );
+            })}
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
+</html>

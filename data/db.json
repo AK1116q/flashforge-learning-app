@@ -1,0 +1,125 @@
+{
+  "users": [
+    {
+      "id": "user_admin",
+      "name": "Admin Tutor",
+      "email": "admin@flashforge.test",
+      "passwordHash": "d5a0f1cb09652a3e8284793e513ac939:a8c9898ebb14885f10fceee6aaba989851dc5275ed02315b5b0f345ad9eabc208b57d0fd73c36151ed79d3a72ea45bf38b2c031d6b0d7337892e55f3bb882ee6",
+      "role": "admin",
+      "createdAt": "2026-04-29T13:46:33.978Z"
+    },
+    {
+      "id": "user_maya",
+      "name": "Maya Chen",
+      "email": "maya@student.test",
+      "passwordHash": "c512de66271b2f19bd66229f3f3c74b1:38e4c588fe5a6d96071976c2f9adcbc478f6810f217c1408969ccb97fd54bbfeed0f7284d49cd95c6fc2b1d6bee3e43ea91e9665dc3b34a6df8d6e0533117b3f",
+      "role": "student",
+      "createdAt": "2026-04-29T13:46:34.025Z"
+    }
+  ],
+  "decks": [
+    {
+      "id": "deck_js",
+      "ownerId": "user_maya",
+      "title": "JavaScript Core Concepts",
+      "subject": "Web Development",
+      "description": "Key terms for modern front-end development.",
+      "createdAt": "2026-04-29T13:46:34.025Z",
+      "updatedAt": "2026-04-29T13:46:34.025Z"
+    },
+    {
+      "id": "deck_db",
+      "ownerId": "user_maya",
+      "title": "Database Essentials",
+      "subject": "Backend",
+      "description": "CRUD, schemas, indexes, and API persistence.",
+      "createdAt": "2026-04-29T13:46:34.025Z",
+      "updatedAt": "2026-04-29T13:46:34.025Z"
+    }
+  ],
+  "cards": [
+    {
+      "id": "card_vdom",
+      "deckId": "deck_js",
+      "front": "What is a virtual DOM?",
+      "back": "A lightweight in-memory representation of UI that helps libraries update the real DOM efficiently.",
+      "difficulty": "medium",
+      "createdAt": "2026-04-29T13:46:34.025Z",
+      "updatedAt": "2026-04-29T13:46:34.025Z"
+    },
+    {
+      "id": "card_spa",
+      "deckId": "deck_js",
+      "front": "What makes an app a SPA?",
+      "back": "It updates views dynamically in one HTML page without requesting a new page for every interaction.",
+      "difficulty": "easy",
+      "createdAt": "2026-04-29T13:46:34.025Z",
+      "updatedAt": "2026-04-29T13:46:34.025Z"
+    },
+    {
+      "id": "card_crud",
+      "deckId": "deck_db",
+      "front": "What does CRUD stand for?",
+      "back": "Create, Read, Update, and Delete.",
+      "difficulty": "easy",
+      "createdAt": "2026-04-29T13:46:34.025Z",
+      "updatedAt": "2026-04-29T13:46:34.025Z"
+    }
+  ],
+  "history": [
+    {
+      "id": "hist_seed",
+      "userId": "user_maya",
+      "deckId": "deck_js",
+      "score": 2,
+      "total": 2,
+      "notes": "Seed study session",
+      "createdAt": "2026-04-29T13:46:34.025Z"
+    },
+    {
+      "id": "hist_b13633b0787d8e2d",
+      "userId": "user_maya",
+      "deckId": "deck_db",
+      "score": 1,
+      "total": 1,
+      "notes": "Completed in study mode",
+      "createdAt": "2026-04-29T14:04:26.895Z"
+    },
+    {
+      "id": "hist_76ac158ef998f1e0",
+      "userId": "user_maya",
+      "deckId": "deck_js",
+      "score": 1,
+      "total": 2,
+      "notes": "Completed in study mode",
+      "createdAt": "2026-04-29T14:06:19.962Z"
+    },
+    {
+      "id": "hist_e3eb8b65672af47e",
+      "userId": "user_maya",
+      "deckId": "deck_js",
+      "score": 0,
+      "total": 1,
+      "notes": "Needs review: What is a virtual DOM?",
+      "createdAt": "2026-04-29T14:09:14.166Z"
+    },
+    {
+      "id": "hist_f11ad821ac24e5bc",
+      "userId": "user_maya",
+      "deckId": "deck_js",
+      "score": 1,
+      "total": 2,
+      "notes": "Completed in study mode",
+      "createdAt": "2026-04-29T14:09:26.279Z"
+    },
+    {
+      "id": "hist_c844c3f6e934fbd7",
+      "userId": "user_maya",
+      "deckId": "deck_js",
+      "score": 2,
+      "total": 2,
+      "notes": "Completed in study mode",
+      "createdAt": "2026-04-29T14:09:36.967Z"
+    }
+  ]
+}
