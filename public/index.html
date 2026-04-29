@@ -138,11 +138,6 @@
               <p className="eyebrow">Modern front-end libraries assignment</p>
               <h1>Study flashcards, build decks, and track your progress.</h1>
               <p className="muted">Create decks, manage flashcards, search instantly, complete study sessions, and review activity from an admin account.</p>
-              <div className="stats">
-                <div className="stat"><strong>3</strong><span>Main sections</span></div>
-                <div className="stat"><strong>1</strong><span>Simple app</span></div>
-                <div className="stat"><strong>Account</strong><span>Login required</span></div>
-              </div>
             </div>
             <form className="auth-box form-grid" onSubmit={event => { event.preventDefault(); onAuth(mode, form); }}>
               <h2>{mode === "login" ? "Login" : "Register"}</h2>
