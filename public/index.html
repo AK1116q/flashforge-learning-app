@@ -115,7 +115,7 @@
                 <Landing onAuth={handleAuth} />
               ) : (
                 <>
-                  {view === "dashboard" && <Dashboard user={user} data={data} stats={stats} />}
+                  {view === "dashboard" && <Dashboard user={user} data={data} stats={stats} api={api} refresh={refresh} notify={notify} fail={fail} />}
                   {view === "decks" && <DeckManager data={data} api={api} refresh={refresh} notify={notify} fail={fail} />}
                   {view === "study" && <Study data={data} api={api} refresh={refresh} notify={notify} fail={fail} />}
                   {view === "admin" && <Admin data={data} api={api} refresh={refresh} notify={notify} fail={fail} />}
@@ -154,12 +154,26 @@
         );
       }
 
-      function Dashboard({ user, data, stats }) {
+      function Dashboard({ user, data, stats, api, refresh, notify, fail }) {
         const latest = data.history.slice(-4).reverse();
         const reviewItems = data.history
           .filter(item => item.type === "review")
           .slice(-5)
           .reverse();
+
+        async function resolveReview(id) {
+          try {
+            await api(`/api/history/${id}`, {
+              method: "PUT",
+              body: JSON.stringify({ type: "resolved", notes: "Marked as reviewed" })
+            });
+            notify("Review item completed");
+            refresh();
+          } catch (error) {
+            fail(error);
+          }
+        }
+
         return (
           <>
             <section className="hero">
@@ -183,7 +197,7 @@
             </section>
             <section className="panel" style={{ marginTop: 18 }}>
               <h2>Cards to review</h2>
-              <ReviewList items={reviewItems} data={data} />
+              <ReviewList items={reviewItems} data={data} onResolve={resolveReview} />
             </section>
           </>
         );
@@ -457,7 +471,7 @@
         );
       }
 
-      function ReviewList({ items, data }) {
+      function ReviewList({ items, data, onResolve }) {
         if (!items.length) return <p className="muted">No cards are marked for review yet.</p>;
         return (
           <div className="grid">
@@ -469,7 +483,10 @@
                   <div className="card-meta"><span>{deck?.title || "Deck"}</span><span>{new Date(item.createdAt).toLocaleDateString()}</span></div>
                   <h3>{card?.front || item.notes}</h3>
                   <p className="muted">{card?.back || "Review this item again in study mode."}</p>
-                  <span className="badge hard">needs review</span>
+                  <div className="actions">
+                    <span className="badge hard">needs review</span>
+                    {onResolve && <button className="primary" onClick={() => onResolve(item.id)}>Mark as reviewed</button>}
+                  </div>
                 </article>
               );
             })}

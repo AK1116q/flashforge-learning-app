@@ -307,10 +307,20 @@ async function handleApi(req, res) {
     }
 
     const historyMatch = url.pathname.match(/^\/api\/history\/([^/]+)$/);
-    if (historyMatch && method === "DELETE") {
+    if (historyMatch && ["PUT", "DELETE"].includes(method)) {
       const record = db.history.find(item => item.id === historyMatch[1]);
       if (!record) return send(res, 404, { error: "History not found" });
       if (user.role !== "admin" && record.userId !== user.id) return send(res, 403, { error: "Forbidden" });
+      if (method === "PUT") {
+        const body = await parseBody(req);
+        Object.assign(record, {
+          type: body.type || record.type || "session",
+          notes: body.notes ?? record.notes,
+          updatedAt: now()
+        });
+        writeDb(db);
+        return send(res, 200, record);
+      }
       db.history = db.history.filter(item => item.id !== record.id);
       writeDb(db);
       return send(res, 200, { ok: true });
